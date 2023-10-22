@@ -24,6 +24,7 @@ from platformio.package.exception import PackageException, UnknownPackageError
 from platformio.package.meta import PackageCompatibility, PackageItem
 from platformio.package.unpack import FileUnpacker
 from platformio.package.vcsclient import VCSClientFactory
+from urllib.parse import urlsplit
 
 
 class PackageManagerInstallMixin:
@@ -172,10 +173,17 @@ class PackageManagerInstallMixin:
             return self.install_symlink(spec)
 
         tmp_dir = tempfile.mkdtemp(prefix="pkg-installing-", dir=self.get_tmp_dir())
+        download_dir = self.get_download_dir()
+        filename = os.path.split(urlsplit(uri).path)[-1]
+        manually_downloaded = os.path.join(download_dir, filename)
+        manually_downloaded_exists = os.path.isfile(manually_downloaded)
         vcs = None
         try:
-            if uri.startswith("file://"):
-                _uri = uri[7:]
+            if uri.startswith("file://") or manually_downloaded_exists:
+                if manually_downloaded_exists:
+                    _uri = manually_downloaded
+                else:
+                    _uri = uri[7:]
                 if os.path.isfile(_uri):
                     self.unpack(_uri, tmp_dir)
                 else:
